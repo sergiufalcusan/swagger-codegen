@@ -14,6 +14,7 @@ import io.swagger.models.properties.Property;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,7 +34,12 @@ public class StaticHtml2Generator extends DefaultCodegen implements CodegenConfi
 
     public StaticHtml2Generator() {
         super();
-        outputFolder = "docs";
+
+        // clear import mapping (from default generator) as this generator does not use it
+        // at the moment
+        importMapping.clear();
+
+        outputFolder = "assets";
         embeddedTemplateDir = templateDir = "htmlDocs2";
 
         defaultIncludes = new HashSet<String>();
@@ -68,13 +74,32 @@ public class StaticHtml2Generator extends DefaultCodegen implements CodegenConfi
         additionalProperties.put(CodegenConstants.ARTIFACT_ID, artifactId);
         additionalProperties.put(CodegenConstants.ARTIFACT_VERSION, artifactVersion);
 
-        supportingFiles.add(new SupportingFile("index.mustache", "", "index.html"));
-        reservedWords = new HashSet<String>();
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Bold.eot", outputFolder + "/fonts", "ApercuPro-Bold.eot"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Bold.ttf", outputFolder + "/fonts", "ApercuPro-Bold.ttf"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Bold.woff", outputFolder + "/fonts", "ApercuPro-Bold.woff"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Bold.woff2", outputFolder + "/fonts", "ApercuPro-Bold.woff2"));
 
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Light.eot", outputFolder + "/fonts", "ApercuPro-Light.eot"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Light.ttf", outputFolder + "/fonts", "ApercuPro-Light.ttf"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Light.woff", outputFolder + "/fonts", "ApercuPro-Light.woff"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Light.woff2", outputFolder + "/fonts", "ApercuPro-Light.woff2"));
+
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Regular.eot", outputFolder + "/fonts", "ApercuPro-Regular.eot"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Regular.ttf", outputFolder + "/fonts", "ApercuPro-Regular.ttf"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Regular.woff", outputFolder + "/fonts", "ApercuPro-Regular.woff"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Regular.woff2", outputFolder + "/fonts", "ApercuPro-Regular.woff2"));
+
+        supportingFiles.add(new SupportingFile("fonts/fonts.css", outputFolder + "/fonts", "fonts.css"));
+
+        supportingFiles.add(new SupportingFile("index.mustache", "", "index.html"));
+
+        instantiationTypes.put("array", "ArrayList");
+        instantiationTypes.put("map", "HashMap");
+
+        reservedWords = new HashSet<String>();
         languageSpecificPrimitives = new HashSet<String>();
         importMapping = new HashMap<String, String>();
     }
-
     @Override
     public CodegenType getTag() {
         return CodegenType.DOCUMENTATION;
@@ -86,166 +111,16 @@ public class StaticHtml2Generator extends DefaultCodegen implements CodegenConfi
     }
 
     @Override
-    public String escapeText(String input) {
-        // newline escaping disabled for HTML documentation for markdown to work correctly
-        return input;
-    }
-
-    @Override
     public String getHelp() {
-        return "Generates a static HTML file.";
+        return "Generates a dynamic HTML site.";
     }
 
     @Override
-    public String getTypeDeclaration(Property p) {
-        if (p instanceof ArrayProperty) {
-            ArrayProperty ap = (ArrayProperty) p;
-            Property inner = ap.getItems();
-            return getSwaggerType(p) + "[" + getTypeDeclaration(inner) + "]";
-        } else if (p instanceof MapProperty) {
-            MapProperty mp = (MapProperty) p;
-            Property inner = mp.getAdditionalProperties();
-
-            return getSwaggerType(p) + "[String, " + getTypeDeclaration(inner) + "]";
+    public String escapeReservedWord(String name) {
+        if(this.reservedWordsMappings().containsKey(name)) {
+            return this.reservedWordsMappings().get(name);
         }
-        return super.getTypeDeclaration(p);
-    }
-
-    @Override
-    public Map<String, Object> postProcessOperations(Map<String, Object> objs) {
-        Map<String, Object> operations = (Map<String, Object>) objs.get("operations");
-        List<CodegenOperation> operationList = (List<CodegenOperation>) operations.get("operation");
-        for (CodegenOperation op : operationList) {
-            op.httpMethod = op.httpMethod.toLowerCase();
-            for (CodegenResponse response : op.responses){
-                if ("0".equals(response.code)){
-                    response.code = "default";
-                }
-            }
-            op.formParams = postProcessParameterEnum(op.formParams);
-        }
-        return objs;
-    }
-
-    @Override
-    public void preprocessSwagger(Swagger swagger) {
-        super.preprocessSwagger(swagger);
-
-        if (swagger.getInfo() != null) {
-            Info info = swagger.getInfo();
-            if (StringUtils.isBlank(jsProjectName) && info.getTitle() != null) {
-                // when jsProjectName is not specified, generate it from info.title
-                jsProjectName = sanitizeName(dashize(info.getTitle()));
-            }
-        }
-
-        // default values
-        if (StringUtils.isBlank(jsProjectName)) {
-            jsProjectName = "swagger-js-client";
-        }
-        if (StringUtils.isBlank(jsModuleName)) {
-            jsModuleName = camelize(underscore(jsProjectName));
-        }
-
-        additionalProperties.put("jsProjectName", jsProjectName);
-        additionalProperties.put("jsModuleName", jsModuleName);
-
-        preparHtmlForGlobalDescription(swagger);
-    }
-
-    @Override
-    public CodegenOperation fromOperation(String path, String httpMethod, Operation operation, Map<String, Model> definitions, Swagger swagger) {
-        CodegenOperation op = super.fromOperation(path, httpMethod, operation, definitions, swagger);
-        if (op.returnType != null) {
-            op.returnType = normalizeType(op.returnType);
-        }
-
-        //path is an unescaped variable in the mustache template api.mustache line 82 '<&path>'
-        op.path = sanitizePath(op.path);
-
-        // Set vendor-extension to be used in template:
-        //     x-codegen-hasMoreRequired
-        //     x-codegen-hasMoreOptional
-        //     x-codegen-hasRequiredParams
-        CodegenParameter lastRequired = null;
-        CodegenParameter lastOptional = null;
-        for (CodegenParameter p : op.allParams) {
-            if (p.required) {
-                lastRequired = p;
-            } else {
-                lastOptional = p;
-            }
-        }
-        for (CodegenParameter p : op.allParams) {
-            if (p == lastRequired) {
-                p.vendorExtensions.put("x-codegen-hasMoreRequired", false);
-            } else if (p == lastOptional) {
-                p.vendorExtensions.put("x-codegen-hasMoreOptional", false);
-            } else {
-                p.vendorExtensions.put("x-codegen-hasMoreRequired", true);
-                p.vendorExtensions.put("x-codegen-hasMoreOptional", true);
-            }
-        }
-        op.vendorExtensions.put("x-codegen-hasRequiredParams", lastRequired != null);
-
-        op.vendorExtensions.put("x-codegen-httpMethodUpperCase", httpMethod.toUpperCase());
-
-        return op;
-    }
-
-    /**
-     * Parse Markdown to HTML for the main "Description" attribute
-     *
-     * @param swagger The base object containing the global description through "Info" class
-     * @return Void
-     */
-    private void preparHtmlForGlobalDescription(Swagger swagger) {
-        String currentDescription = swagger.getInfo().getDescription();
-        if (currentDescription != null && !currentDescription.isEmpty()) {
-            Markdown markInstance = new Markdown();
-            swagger.getInfo().setDescription( markInstance.toHtml(currentDescription) );
-        } else {
-            LOGGER.error("Swagger object description is empty [" + swagger.getInfo().getTitle() + "]");
-        }
-    }
-
-    /**
-     * Format to HTML the enums contained in every operations
-     *
-     * @param parameterList The whole parameters contained in one operation
-     * @return String | Html formated enum
-     */
-    public List<CodegenParameter> postProcessParameterEnum(List<CodegenParameter> parameterList) {
-        String enumFormatted = "";
-        for(CodegenParameter parameter : parameterList) {
-            if (parameter.isEnum) {
-                for (int i = 0; i < parameter._enum.size(); i++) {
-                    String spacer = (i == (parameter._enum.size() - 1)) ? " " : ", ";
-
-                    if (parameter._enum.get(i) != null)
-                        enumFormatted += "`" + parameter._enum.get(i) + "`" + spacer;
-                }
-                Markdown markInstance = new Markdown();
-                if (!enumFormatted.isEmpty())
-                    parameter.vendorExtensions.put("x-eumFormatted", markInstance.toHtml(enumFormatted));
-            }
-        }
-        return parameterList;
-    }
-
-    private String sanitizePath(String p) {
-        //prefer replace a ', instead of a fuLL URL encode for readability
-        return p.replaceAll("'", "%27");
-    }
-
-    /**
-     * Normalize type by wrapping primitive types with single quotes.
-     *
-     * @param type Primitive type
-     * @return Normalized type
-     */
-    public String normalizeType(String type) {
-        return type.replaceAll("\\b(Boolean|Integer|Number|String|Date)\\b", "'$1'");
+        return "_" + name;
     }
 
     @Override
@@ -258,5 +133,5 @@ public class StaticHtml2Generator extends DefaultCodegen implements CodegenConfi
     public String escapeUnsafeCharacters(String input) {
         // just return the original string
         return input;
-    }   
+    }
 }

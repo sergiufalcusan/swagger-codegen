@@ -63,6 +63,22 @@ public class StaticHtmlGenerator extends DefaultCodegen implements CodegenConfig
         additionalProperties.put(CodegenConstants.ARTIFACT_ID, artifactId);
         additionalProperties.put(CodegenConstants.ARTIFACT_VERSION, artifactVersion);
 
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Bold.eot", outputFolder + "/fonts", "ApercuPro-Bold.eot"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Bold.ttf", outputFolder + "/fonts", "ApercuPro-Bold.ttf"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Bold.woff", outputFolder + "/fonts", "ApercuPro-Bold.woff"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Bold.woff2", outputFolder + "/fonts", "ApercuPro-Bold.woff2"));
+
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Light.eot", outputFolder + "/fonts", "ApercuPro-Light.eot"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Light.ttf", outputFolder + "/fonts", "ApercuPro-Light.ttf"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Light.woff", outputFolder + "/fonts", "ApercuPro-Light.woff"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Light.woff2", outputFolder + "/fonts", "ApercuPro-Light.woff2"));
+
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Regular.eot", outputFolder + "/fonts", "ApercuPro-Regular.eot"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Regular.ttf", outputFolder + "/fonts", "ApercuPro-Regular.ttf"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Regular.woff", outputFolder + "/fonts", "ApercuPro-Regular.woff"));
+        supportingFiles.add(new SupportingFile("fonts/ApercuPro-Regular.woff2", outputFolder + "/fonts", "ApercuPro-Regular.woff2"));
+
+
         supportingFiles.add(new SupportingFile("index.mustache", "", "index.html"));
         reservedWords = new HashSet<String>();
 

@@ -102,6 +102,7 @@
       processMarked();
     });
   </script>
+    <link rel="stylesheet" type="text/css" href="assets/fonts/fonts.css">
   <style type="text/css">
   {{>css_bootstrap}}
   {{>css_prettify}}
@@ -338,7 +339,7 @@
                             <div class="tab-content" style='margin-bottom: 10px;'>
                               {{#schema}}
                                 <div class="tab-pane active" id="responses-{{nickname}}-{{code}}-schema">
-                                  <div id='responses-{{nickname}}-{{code}}-schema-{{code}}' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                  <div id='responses-{{nickname}}-{{code}}-schema-{{code}}' style="padding: 30px; border-left: 1px solid #555; border-right: 1px solid #555; border-bottom: 1px solid #555;">
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {{{jsonSchema}}};
